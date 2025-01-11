@@ -8,17 +8,18 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QColorDialog,
         QTableWidgetItem, QToolBar, QVBoxLayout)
 from PyQt5.QtPrintSupport import QPrinter, QPrintPreviewDialog
 
-import spreadsheet_rc
 
-from spreadsheetdelegate import SpreadSheetDelegate
-from spreadsheetitem import SpreadSheetItem
-from printview import PrintView
+
+from visuals import spreadsheet_rc
+from visuals.delegate import SpreadSheetDelegate
+from visuals.spreadsheetitem import SpreadSheetItem
+from visuals.printview import PrintView
 from util import decode_pos, encode_pos
 
 
 class SpreadSheet(QMainWindow):
 
-    dateFormats = ["dd/M/yyyy", "yyyy/M/dd", "dd.MM.yyyy"]
+    dateFormats = ['dd/M/yyyy', 'yyyy/M/dd', 'dd.MM.yyyy']
 
     currentDateFormat = dateFormats[0]
 
@@ -52,47 +53,51 @@ class SpreadSheet(QMainWindow):
         self.table.itemChanged.connect(self.updateStatus)
         self.formulaInput.returnPressed.connect(self.returnPressed)
         self.table.itemChanged.connect(self.updateLineEdit)
-        self.setWindowTitle("Spreadsheet")
+        self.setWindowTitle('Spreadsheet')
+
+    def loadBlankData(self):
+        pass
+
 
     def createActions(self):
-        self.cell_sumAction = QAction("Sum", self)
+        self.cell_sumAction = QAction('Sum', self)
         self.cell_sumAction.triggered.connect(self.actionSum)
 
-        self.cell_addAction = QAction("&Add", self)
+        self.cell_addAction = QAction('&Add', self)
         self.cell_addAction.setShortcut(Qt.CTRL | Qt.Key_Plus)
         self.cell_addAction.triggered.connect(self.actionAdd)
 
-        self.cell_subAction = QAction("&Subtract", self)
+        self.cell_subAction = QAction('&Subtract', self)
         self.cell_subAction.setShortcut(Qt.CTRL | Qt.Key_Minus)
         self.cell_subAction.triggered.connect(self.actionSubtract)
 
-        self.cell_mulAction = QAction("&Multiply", self)
+        self.cell_mulAction = QAction('&Multiply', self)
         self.cell_mulAction.setShortcut(Qt.CTRL | Qt.Key_multiply)
         self.cell_mulAction.triggered.connect(self.actionMultiply)
 
-        self.cell_divAction = QAction("&Divide", self)
+        self.cell_divAction = QAction('&Divide', self)
         self.cell_divAction.setShortcut(Qt.CTRL | Qt.Key_division)
         self.cell_divAction.triggered.connect(self.actionDivide)
 
-        self.fontAction = QAction("Font...", self)
+        self.fontAction = QAction('Font...', self)
         self.fontAction.setShortcut(Qt.CTRL | Qt.Key_F)
         self.fontAction.triggered.connect(self.selectFont)
 
-        self.colorAction = QAction(QIcon(QPixmap(16, 16)), "Background &Color...", self)
+        self.colorAction = QAction(QIcon(QPixmap(16, 16)), 'Background &Color...', self)
         self.colorAction.triggered.connect(self.selectColor)
 
-        self.clearAction = QAction("Clear", self)
+        self.clearAction = QAction('Clear', self)
         self.clearAction.setShortcut(Qt.Key_Delete)
         self.clearAction.triggered.connect(self.clear)
 
-        self.aboutSpreadSheet = QAction("About Spreadsheet", self)
+        self.aboutSpreadSheet = QAction('About Spreadsheet', self)
         self.aboutSpreadSheet.triggered.connect(self.showAbout)
 
-        self.exitAction = QAction("E&xit", self)
+        self.exitAction = QAction('E&xit', self)
         self.exitAction.setShortcut(QKeySequence.Quit)
         self.exitAction.triggered.connect(QApplication.instance().quit)
 
-        self.printAction = QAction("&Print", self)
+        self.printAction = QAction('&Print', self)
         self.printAction.setShortcut(QKeySequence.Print)
         self.printAction.triggered.connect(self.print_)
 
@@ -103,8 +108,8 @@ class SpreadSheet(QMainWindow):
         self.secondSeparator.setSeparator(True)
 
     def setupMenuBar(self):
-        self.fileMenu = self.menuBar().addMenu("&File")
-        self.dateFormatMenu = self.fileMenu.addMenu("&Date format")
+        self.fileMenu = self.menuBar().addMenu('&File')
+        self.dateFormatMenu = self.fileMenu.addMenu('&Date format')
         self.dateFormatGroup = QActionGroup(self)
         for f in self.dateFormats:
             action = QAction(f, self, checkable=True,
@@ -116,7 +121,7 @@ class SpreadSheet(QMainWindow):
                 
         self.fileMenu.addAction(self.printAction)
         self.fileMenu.addAction(self.exitAction)
-        self.cellMenu = self.menuBar().addMenu("&Cell")
+        self.cellMenu = self.menuBar().addMenu('&Cell')
         self.cellMenu.addAction(self.cell_addAction)
         self.cellMenu.addAction(self.cell_subAction)
         self.cellMenu.addAction(self.cell_mulAction)
@@ -126,7 +131,7 @@ class SpreadSheet(QMainWindow):
         self.cellMenu.addAction(self.colorAction)
         self.cellMenu.addAction(self.fontAction)
         self.menuBar().addSeparator()
-        self.aboutMenu = self.menuBar().addMenu("&Help")
+        self.aboutMenu = self.menuBar().addMenu('&Help')
         self.aboutMenu.addAction(self.aboutSpreadSheet)
 
     def changeDateFormat(self):
@@ -141,7 +146,7 @@ class SpreadSheet(QMainWindow):
     def updateStatus(self, item):
         if item and item == self.table.currentItem():
             self.statusBar().showMessage(item.data(Qt.StatusTipRole), 1000)
-            self.cellLabel.setText("Cell: (%s)" % encode_pos(self.table.row(item),
+            self.cellLabel.setText('Cell: (%s)' % encode_pos(self.table.row(item),
                                                                      self.table.column(item)))
 
     def updateColor(self, item):
@@ -235,7 +240,7 @@ class SpreadSheet(QMainWindow):
         cell2ColInput = QComboBox(group)
         cell2ColInput.addItems(cols)
         cell2ColInput.setCurrentIndex(c2Col)
-        equalsLabel = QLabel("=", group)
+        equalsLabel = QLabel('=', group)
         equalsLabel.setAlignment(Qt.AlignHCenter)
         outLabel = QLabel(outText, group)
         outRowInput = QComboBox(group)
@@ -246,9 +251,9 @@ class SpreadSheet(QMainWindow):
         outColInput.addItems(cols)
         outColInput.setCurrentIndex(outCol)
 
-        cancelButton = QPushButton("Cancel", addDialog)
+        cancelButton = QPushButton('Cancel', addDialog)
         cancelButton.clicked.connect(addDialog.reject)
-        okButton = QPushButton("OK", addDialog)
+        okButton = QPushButton('OK', addDialog)
         okButton.setDefault(True)
         okButton.clicked.connect(addDialog.accept)
         buttonsLayout = QHBoxLayout()
@@ -320,41 +325,41 @@ class SpreadSheet(QMainWindow):
         cell1 = encode_pos(row_first, col_first)
         cell2 = encode_pos(row_last, col_last)
         out = encode_pos(row_cur, col_cur)
-        ok, cell1, cell2, out = self.runInputDialog("Sum cells", "First cell:",
-                "Last cell:", u"\N{GREEK CAPITAL LETTER SIGMA}", "Output to:",
+        ok, cell1, cell2, out = self.runInputDialog('Sum cells', 'First cell:',
+                'Last cell:', u'\N{GREEK CAPITAL LETTER SIGMA}', 'Output to:',
                 cell1, cell2, out)
         if ok:
             row, col = decode_pos(out)
-            self.table.item(row, col).setText("sum %s %s" % (cell1, cell2))
+            self.table.item(row, col).setText('sum %s %s' % (cell1, cell2))
 
     def actionMath_helper(self, title, op):
-        cell1 = "C1"
-        cell2 = "C2"
-        out = "C3"
+        cell1 = 'C1'
+        cell2 = 'C2'
+        out = 'C3'
         current = self.table.currentItem()
         if current:
             out = encode_pos(self.table.currentRow(), self.table.currentColumn())
-        ok, cell1, cell2, out = self.runInputDialog(title, "Cell 1", "Cell 2",
-                op, "Output to:", cell1, cell2, out)
+        ok, cell1, cell2, out = self.runInputDialog(title, 'Cell 1', 'Cell 2',
+                op, 'Output to:', cell1, cell2, out)
         if ok:
             row, col = decode_pos(out)
-            self.table.item(row, col).setText("%s %s %s" % (op, cell1, cell2))
+            self.table.item(row, col).setText('%s %s %s' % (op, cell1, cell2))
 
     def actionAdd(self):
-        self.actionMath_helper("Addition", "+")
+        self.actionMath_helper('Addition', '+')
 
     def actionSubtract(self):
-        self.actionMath_helper("Subtraction", "-")
+        self.actionMath_helper('Subtraction', '-')
 
     def actionMultiply(self):
-        self.actionMath_helper("Multiplication", "*")
+        self.actionMath_helper('Multiplication', '*')
 
     def actionDivide(self):
-        self.actionMath_helper("Division", "/")
+        self.actionMath_helper('Division', '/')
 
     def clear(self):
         for i in self.table.selectedItems():
-            i.setText("")
+            i.setText('')
 
     def setupContextMenu(self):
         self.addAction(self.cell_addAction)
@@ -374,113 +379,115 @@ class SpreadSheet(QMainWindow):
         titleFont = self.table.font()
         titleFont.setBold(True)
         # column 0
-        self.table.setItem(0, 0, SpreadSheetItem("Item"))
+        self.table.setItem(0, 0, SpreadSheetItem('Item'))
         self.table.item(0, 0).setBackground(titleBackground)
-        self.table.item(0, 0).setToolTip("This column shows the purchased item/service")
+        self.table.item(0, 0).setToolTip('This column shows the purchased item/service')
         self.table.item(0, 0).setFont(titleFont)
-        self.table.setItem(1, 0, SpreadSheetItem("AirportBus"))
-        self.table.setItem(2, 0, SpreadSheetItem("Flight (Munich)"))
-        self.table.setItem(3, 0, SpreadSheetItem("Lunch"))
-        self.table.setItem(4, 0, SpreadSheetItem("Flight (LA)"))
-        self.table.setItem(5, 0, SpreadSheetItem("Taxi"))
-        self.table.setItem(6, 0, SpreadSheetItem("Dinner"))
-        self.table.setItem(7, 0, SpreadSheetItem("Hotel"))
-        self.table.setItem(8, 0, SpreadSheetItem("Flight (Oslo)"))
-        self.table.setItem(9, 0, SpreadSheetItem("Total:"))
+        self.table.setItem(1, 0, SpreadSheetItem('AirportBus'))
+        self.table.setItem(2, 0, SpreadSheetItem('Flight (Munich)'))
+        self.table.setItem(3, 0, SpreadSheetItem('Lunch'))
+        self.table.setItem(4, 0, SpreadSheetItem('Flight (LA)'))
+        self.table.setItem(5, 0, SpreadSheetItem('Taxi'))
+        self.table.setItem(6, 0, SpreadSheetItem('Dinner'))
+        self.table.setItem(7, 0, SpreadSheetItem('Hotel'))
+        self.table.setItem(8, 0, SpreadSheetItem('Flight (Oslo)'))
+        self.table.setItem(9, 0, SpreadSheetItem('Total:'))
         self.table.item(9, 0).setFont(titleFont)
         self.table.item(9, 0).setBackground(Qt.lightGray)
         # column 1
-        self.table.setItem(0, 1, SpreadSheetItem("Date"))
+        self.table.setItem(0, 1, SpreadSheetItem('Date'))
         self.table.item(0, 1).setBackground(titleBackground)
-        self.table.item(0, 1).setToolTip("This column shows the purchase date, double click to change")
+        self.table.item(0, 1).setToolTip('This column shows the purchase date, double click to change')
         self.table.item(0, 1).setFont(titleFont)
-        self.table.setItem(1, 1, SpreadSheetItem("15/6/2006"))
-        self.table.setItem(2, 1, SpreadSheetItem("15/6/2006"))
-        self.table.setItem(3, 1, SpreadSheetItem("15/6/2006"))
-        self.table.setItem(4, 1, SpreadSheetItem("21/5/2006"))
-        self.table.setItem(5, 1, SpreadSheetItem("16/6/2006"))
-        self.table.setItem(6, 1, SpreadSheetItem("16/6/2006"))
-        self.table.setItem(7, 1, SpreadSheetItem("16/6/2006"))
-        self.table.setItem(8, 1, SpreadSheetItem("18/6/2006"))
+        self.table.setItem(1, 1, SpreadSheetItem('15/6/2006'))
+        self.table.setItem(2, 1, SpreadSheetItem('15/6/2006'))
+        self.table.setItem(3, 1, SpreadSheetItem('15/6/2006'))
+        self.table.setItem(4, 1, SpreadSheetItem('21/5/2006'))
+        self.table.setItem(5, 1, SpreadSheetItem('16/6/2006'))
+        self.table.setItem(6, 1, SpreadSheetItem('16/6/2006'))
+        self.table.setItem(7, 1, SpreadSheetItem('16/6/2006'))
+        self.table.setItem(8, 1, SpreadSheetItem('18/6/2006'))
         self.table.setItem(9, 1, SpreadSheetItem())
         self.table.item(9, 1).setBackground(Qt.lightGray)
         # column 2
-        self.table.setItem(0, 2, SpreadSheetItem("Price"))
+        self.table.setItem(0, 2, SpreadSheetItem('Price'))
         self.table.item(0, 2).setBackground(titleBackground)
-        self.table.item(0, 2).setToolTip("This column shows the price of the purchase")
+        self.table.item(0, 2).setToolTip('This column shows the price of the purchase')
         self.table.item(0, 2).setFont(titleFont)
-        self.table.setItem(1, 2, SpreadSheetItem("150"))
-        self.table.setItem(2, 2, SpreadSheetItem("2350"))
-        self.table.setItem(3, 2, SpreadSheetItem("-14"))
-        self.table.setItem(4, 2, SpreadSheetItem("980"))
-        self.table.setItem(5, 2, SpreadSheetItem("5"))
-        self.table.setItem(6, 2, SpreadSheetItem("120"))
-        self.table.setItem(7, 2, SpreadSheetItem("300"))
-        self.table.setItem(8, 2, SpreadSheetItem("1240"))
+        self.table.setItem(1, 2, SpreadSheetItem('150'))
+        self.table.setItem(2, 2, SpreadSheetItem('2350'))
+        self.table.setItem(3, 2, SpreadSheetItem('-14'))
+        self.table.setItem(4, 2, SpreadSheetItem('980'))
+        self.table.setItem(5, 2, SpreadSheetItem('5'))
+        self.table.setItem(6, 2, SpreadSheetItem('120'))
+        self.table.setItem(7, 2, SpreadSheetItem('300'))
+        self.table.setItem(8, 2, SpreadSheetItem('1240'))
         self.table.setItem(9, 2, SpreadSheetItem())
         self.table.item(9, 2).setBackground(Qt.lightGray)
         # column 3
-        self.table.setItem(0, 3, SpreadSheetItem("Currency"))
+        self.table.setItem(0, 3, SpreadSheetItem('Currency'))
         self.table.item(0, 3).setBackground(titleBackground)
-        self.table.item(0, 3).setToolTip("This column shows the currency")
+        self.table.item(0, 3).setToolTip('This column shows the currency')
         self.table.item(0, 3).setFont(titleFont)
-        self.table.setItem(1, 3, SpreadSheetItem("NOK"))
-        self.table.setItem(2, 3, SpreadSheetItem("NOK"))
-        self.table.setItem(3, 3, SpreadSheetItem("EUR"))
-        self.table.setItem(4, 3, SpreadSheetItem("EUR"))
-        self.table.setItem(5, 3, SpreadSheetItem("USD"))
-        self.table.setItem(6, 3, SpreadSheetItem("USD"))
-        self.table.setItem(7, 3, SpreadSheetItem("USD"))
-        self.table.setItem(8, 3, SpreadSheetItem("USD"))
+        self.table.setItem(1, 3, SpreadSheetItem('NOK'))
+        self.table.setItem(2, 3, SpreadSheetItem('NOK'))
+        self.table.setItem(3, 3, SpreadSheetItem('EUR'))
+        self.table.setItem(4, 3, SpreadSheetItem('EUR'))
+        self.table.setItem(5, 3, SpreadSheetItem('USD'))
+        self.table.setItem(6, 3, SpreadSheetItem('USD'))
+        self.table.setItem(7, 3, SpreadSheetItem('USD'))
+        self.table.setItem(8, 3, SpreadSheetItem('USD'))
         self.table.setItem(9, 3, SpreadSheetItem())
         self.table.item(9,3).setBackground(Qt.lightGray)
         # column 4
-        self.table.setItem(0, 4, SpreadSheetItem("Ex. Rate"))
+        self.table.setItem(0, 4, SpreadSheetItem('Ex. Rate'))
         self.table.item(0, 4).setBackground(titleBackground)
-        self.table.item(0, 4).setToolTip("This column shows the exchange rate to NOK")
+        self.table.item(0, 4).setToolTip('This column shows the exchange rate to NOK')
         self.table.item(0, 4).setFont(titleFont)
-        self.table.setItem(1, 4, SpreadSheetItem("1"))
-        self.table.setItem(2, 4, SpreadSheetItem("1"))
-        self.table.setItem(3, 4, SpreadSheetItem("8"))
-        self.table.setItem(4, 4, SpreadSheetItem("8"))
-        self.table.setItem(5, 4, SpreadSheetItem("7"))
-        self.table.setItem(6, 4, SpreadSheetItem("7"))
-        self.table.setItem(7, 4, SpreadSheetItem("7"))
-        self.table.setItem(8, 4, SpreadSheetItem("7"))
+        self.table.setItem(1, 4, SpreadSheetItem('1'))
+        self.table.setItem(2, 4, SpreadSheetItem('1'))
+        self.table.setItem(3, 4, SpreadSheetItem('8'))
+        self.table.setItem(4, 4, SpreadSheetItem('8'))
+        self.table.setItem(5, 4, SpreadSheetItem('7'))
+        self.table.setItem(6, 4, SpreadSheetItem('7'))
+        self.table.setItem(7, 4, SpreadSheetItem('7'))
+        self.table.setItem(8, 4, SpreadSheetItem('7'))
         self.table.setItem(9, 4, SpreadSheetItem())
         self.table.item(9,4).setBackground(Qt.lightGray)
         # column 5
-        self.table.setItem(0, 5, SpreadSheetItem("NOK"))
+        self.table.setItem(0, 5, SpreadSheetItem('NOK'))
         self.table.item(0, 5).setBackground(titleBackground)
-        self.table.item(0, 5).setToolTip("This column shows the expenses in NOK")
+        self.table.item(0, 5).setToolTip('This column shows the expenses in NOK')
         self.table.item(0, 5).setFont(titleFont)
-        self.table.setItem(1, 5, SpreadSheetItem("* C2 E2"))
-        self.table.setItem(2, 5, SpreadSheetItem("* C3 E3"))
-        self.table.setItem(3, 5, SpreadSheetItem("* C4 E4"))
-        self.table.setItem(4, 5, SpreadSheetItem("* C5 E5"))
-        self.table.setItem(5, 5, SpreadSheetItem("* C6 E6"))
-        self.table.setItem(6, 5, SpreadSheetItem("* C7 E7"))
-        self.table.setItem(7, 5, SpreadSheetItem("* C8 E8"))
-        self.table.setItem(8, 5, SpreadSheetItem("* C9 E9"))
-        self.table.setItem(9, 5, SpreadSheetItem("sum F2 F9"))
+        self.table.setItem(1, 5, SpreadSheetItem('* C2 E2'))
+        self.table.setItem(2, 5, SpreadSheetItem('* C3 E3'))
+        self.table.setItem(3, 5, SpreadSheetItem('* C4 E4'))
+        self.table.setItem(4, 5, SpreadSheetItem('* C5 E5'))
+        self.table.setItem(5, 5, SpreadSheetItem('* C6 E6'))
+        self.table.setItem(6, 5, SpreadSheetItem('* C7 E7'))
+        self.table.setItem(7, 5, SpreadSheetItem('* C8 E8'))
+        self.table.setItem(8, 5, SpreadSheetItem('* C9 E9'))
+        self.table.setItem(9, 5, SpreadSheetItem('sum F2 F9'))
         self.table.item(9,5).setBackground(Qt.lightGray)
 
     def showAbout(self):
-        QMessageBox.about(self, "About Spreadsheet", """
+        QMessageBox.about(self, 'About Spreadsheet', '''
             <HTML>
-            <p><b>This demo shows use of <c>QTableWidget</c> with custom handling for
-             individual cells.</b></p>
-            <p>Using a customized table item we make it possible to have dynamic
-             output in different cells. The content that is implemented for this
-             particular demo is:
+            <p>
+                Это приложения для работы с таблицами использует язык программирования Python
+               и библиотеку PyQt
+            </p>
+            <p>
+                Также приложения расчитано для импорт и экспорта данных в форматах XLSX, JSON, CSV и HTMl
+            </p>
             <ul>
-            <li>Adding two cells.</li>
-            <li>Subtracting one cell from another.</li>
-            <li>Multiplying two cells.</li>
-            <li>Dividing one cell with another.</li>
-            <li>Summing the contents of an arbitrary number of cells.</li>
+                <li>Adding two cells.</li>
+                <li>Subtracting one cell from another.</li>
+                <li>Multiplying two cells.</li>
+                <li>Dividing one cell with another.</li>
+                <li>Summing the contents of an arbitrary number of cells.</li>
             </HTML>
-        """)
+        ''')
 
     def print_(self):
         printer = QPrinter(QPrinter.ScreenResolution)
@@ -497,7 +504,7 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     sheet = SpreadSheet(10, 6)
-    sheet.setWindowIcon(QIcon(QPixmap(":/images/interview.png")))
+    sheet.setWindowIcon(QIcon(QPixmap(':/images/interview.png')))
     sheet.resize(640, 420)
     sheet.show()
     sys.exit(app.exec_())
