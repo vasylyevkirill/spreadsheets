@@ -1,6 +1,7 @@
 import string
 from .models import parse_coordinate, Coordinates
 
+
 def test_parse_coordinate():
     coordinate, _ = parse_coordinate('12', '1234567890')
     assert coordinate == 12
@@ -20,9 +21,7 @@ def test_create_coordinate():
     coordinate = Coordinates('A1')
     assert coordinate.x == 0
     assert coordinate.y == 0
-    assert coordinate.is_valid() == True
+    assert coordinate.is_valid()
 
     coordinate = Coordinates()
-    assert coordinate.is_valid() == False
-
-
+    assert not coordinate.is_valid()

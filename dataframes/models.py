@@ -20,6 +20,8 @@ class Expression():
     def __init__(self, str_expression: str):
         self._value = str_expression
 
+    def calculate_value(self):
+        return
 
 @dataclass()
 class Coordinates():
@@ -46,16 +48,38 @@ class Coordinates():
         self.y -= 1
 
         return self.x, self.y
-            
+
     def is_valid(self, raise_exception: bool = False) -> bool:
         if self.x >= 0 and self.y >= 0:
             return True
         return False
 
+
+@dataclass()
+class CoordinatesRange: 
+    items: list[Coordinates]
+
+    def __init__(self, from_coordinates: Coordinates, to_coordinates: Coordinates):
+        self.items = [
+            Coordinates(x=x, y=y)
+            for x in range(from_coordinates.x, to_coordinates.x)
+            for y in range(from_coordinates.y, to_coordinates.y)
+        ]
+    
+    def __getitem__(self, index):
+        return self.items[index]
+
+
 @dataclass()
 class SpreadsheetCell():
     coordinates: Coordinates
-    value: str | int | date | Expression | None
+    value: str | float | int | date | Expression | None
+
+    def __init__(self, coordinates: Coordinates, value: str | float | int | date | Expression | None):
+        self.value = value
+        self.coordinates = coordinates
+        if isinstance(self.value, str) and self.value.startswith('='):
+            self.value = Expression(self.value)
 
     def calculate_value(self, data_format: str | None):
         if isinstance(self.value, Expression):
@@ -68,19 +92,37 @@ class SpreadsheetCell():
 
 
 class Spreadsheet():
-    def __init__(self, len_x: int = -1, len_y: int = -1, data: dict | list | None = None):
+    def __init__(self, len_x: int = -1, len_y: int = -1, data: dict | DataFrame | list | None = None):
         if not data:
             data = [[None for i in range(len_x)] for i in range(len_y)]
+        elif isinstance(data, DataFrame):
+            self._dataframe = data
+            return
+            
         self._dataframe = DataFrame(data=data)
 
     def __getitem__(self, coordinates: Coordinates) -> SpreadsheetCell:
-        _dataframe[coordinates]
+        value = self._dataframe[coordinates.y][coordinates.x]
+        return SpreadsheetCell(
+            coordinates = coordinates,
+            value=value,
+        )
 
- 
+    @property
+    def coordinates(self) -> CoordinatesRange:
+        return CoordinatesRange(
+            Coordinates(x=0, y=0),
+            Coordinates(x=self.shape[0], y=self.shape[1])
+        )
 
-class SpreadsheetExpression():
-    def __init__(self, expression):
-        self._expression = expression
+    @property
+    def values(self) -> list[SpreadsheetCell]:
+        return [self.__getitem__(coordinate) for coordinate in self.coordinates]
 
-    def calculate_value(self):
-        return
+    @property
+    def shape(self) -> tuple[int]:
+        return self._dataframe.shape
+        
+    def __setitem__(self, coordinates: Coordinates, cell: SpreadsheetCell) -> SpreadsheetCell:
+        self._dataframe[coordinates] = cell.value
+        return cell.value

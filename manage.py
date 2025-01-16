@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
-from PyQt5.QtCore import QDate, QPoint, Qt
-from PyQt5.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap
-from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QColorDialog,
-        QComboBox, QDialog, QFontDialog, QGroupBox, QHBoxLayout, QLabel,
-        QLineEdit, QMainWindow, QMessageBox, QPushButton, QTableWidget,
-        QTableWidgetItem, QToolBar, QVBoxLayout)
+from pandas import DataFrame, read_excel, read_csv, read_json
+
+from PyQt5.QtCore import QDate, Qt
+from PyQt5.QtGui import QColor, QIcon, QKeySequence, QPixmap
+from PyQt5.QtWidgets import (
+    QAction, QActionGroup, QApplication, QFileDialog,
+    QLabel, QLineEdit, QMainWindow, QToolBar, QMessageBox
+)
 from PyQt5.QtPrintSupport import QPrinter, QPrintPreviewDialog
 
-
-
-from visuals import spreadsheet_rc
-from visuals.delegate import SpreadSheetDelegate
+from components.TableWidget import TableWidget
+from components.InputDialog import InputDialog
+from components.AboutWindow import show_about_window
 from visuals.spreadsheetitem import SpreadSheetItem
 from visuals.printview import PrintView
 from util import decode_pos, encode_pos
@@ -23,7 +24,7 @@ class SpreadSheet(QMainWindow):
 
     currentDateFormat = dateFormats[0]
 
-    def __init__(self, rows, cols, parent = None):
+    def __init__(self, rows, cols, parent=None):
         super(SpreadSheet, self).__init__(parent)
 
         self.toolBar = QToolBar()
@@ -33,73 +34,77 @@ class SpreadSheet(QMainWindow):
         self.cellLabel.setMinimumSize(80, 0)
         self.toolBar.addWidget(self.cellLabel)
         self.toolBar.addWidget(self.formulaInput)
-        self.table = QTableWidget(rows, cols, self)
-        for c in range(cols):
-            character = chr(ord('A') + c)
-            self.table.setHorizontalHeaderItem(c, QTableWidgetItem(character))
+        self.table = TableWidget(rows_count=rows, columns_count=cols, parent=self)
+        self.table.itemChanged.connect(self.updateStatus)
+        self.table.currentItemChanged.connect(self.updateLineEdit)
 
-        self.table.setItemPrototype(self.table.item(rows - 1, cols - 1))
-        self.table.setItemDelegate(SpreadSheetDelegate(self))
         self.createActions()
-        self.updateColor(0)
+        self.table.updateItemColor(0)
         self.setupMenuBar()
         self.setupContents()
         self.setupContextMenu()
         self.setCentralWidget(self.table)
         self.statusBar()
-        self.table.currentItemChanged.connect(self.updateStatus)
-        self.table.currentItemChanged.connect(self.updateColor)
-        self.table.currentItemChanged.connect(self.updateLineEdit)
-        self.table.itemChanged.connect(self.updateStatus)
         self.formulaInput.returnPressed.connect(self.returnPressed)
-        self.table.itemChanged.connect(self.updateLineEdit)
-        self.setWindowTitle('Spreadsheet')
+        self.setWindowTitle('ЭксЭксЭль')
 
-    def loadBlankData(self):
-        pass
-
+    def setupContextMenu(self):
+        self.addAction(self.cell_addAction)
+        self.addAction(self.cell_subAction)
+        self.addAction(self.cell_mulAction)
+        self.addAction(self.cell_divAction)
+        self.addAction(self.cell_sumAction)
+        self.addAction(self.firstSeparator)
+        self.addAction(self.colorAction)
+        self.addAction(self.fontAction)
+        self.addAction(self.secondSeparator)
+        self.addAction(self.clearAction)
+        self.setContextMenuPolicy(Qt.ActionsContextMenu)
 
     def createActions(self):
-        self.cell_sumAction = QAction('Sum', self)
+        self.cell_sumAction = QAction('Сумма', self)
         self.cell_sumAction.triggered.connect(self.actionSum)
 
-        self.cell_addAction = QAction('&Add', self)
+        self.cell_addAction = QAction('&Добавить', self)
         self.cell_addAction.setShortcut(Qt.CTRL | Qt.Key_Plus)
         self.cell_addAction.triggered.connect(self.actionAdd)
 
-        self.cell_subAction = QAction('&Subtract', self)
+        self.cell_subAction = QAction('&Отнять', self)
         self.cell_subAction.setShortcut(Qt.CTRL | Qt.Key_Minus)
         self.cell_subAction.triggered.connect(self.actionSubtract)
 
-        self.cell_mulAction = QAction('&Multiply', self)
+        self.cell_mulAction = QAction('&Умножить', self)
         self.cell_mulAction.setShortcut(Qt.CTRL | Qt.Key_multiply)
         self.cell_mulAction.triggered.connect(self.actionMultiply)
 
-        self.cell_divAction = QAction('&Divide', self)
+        self.cell_divAction = QAction('&Поделить', self)
         self.cell_divAction.setShortcut(Qt.CTRL | Qt.Key_division)
         self.cell_divAction.triggered.connect(self.actionDivide)
 
-        self.fontAction = QAction('Font...', self)
+        self.fontAction = QAction('Шрифт...', self)
         self.fontAction.setShortcut(Qt.CTRL | Qt.Key_F)
-        self.fontAction.triggered.connect(self.selectFont)
+        self.fontAction.triggered.connect(self.table.selectFont)
 
-        self.colorAction = QAction(QIcon(QPixmap(16, 16)), 'Background &Color...', self)
-        self.colorAction.triggered.connect(self.selectColor)
+        self.colorAction = QAction(QIcon(QPixmap(16, 16)), 'Цвет &фона...', self)
+        self.colorAction.triggered.connect(self.table.selectColor)
 
-        self.clearAction = QAction('Clear', self)
+        self.clearAction = QAction('Очистить', self)
         self.clearAction.setShortcut(Qt.Key_Delete)
         self.clearAction.triggered.connect(self.clear)
 
-        self.aboutSpreadSheet = QAction('About Spreadsheet', self)
-        self.aboutSpreadSheet.triggered.connect(self.showAbout)
+        self.aboutSpreadSheet = QAction('О приложении', self)
+        self.aboutSpreadSheet.triggered.connect(self.show_about)
 
-        self.exitAction = QAction('E&xit', self)
+        self.exitAction = QAction('В&ыйти', self)
         self.exitAction.setShortcut(QKeySequence.Quit)
         self.exitAction.triggered.connect(QApplication.instance().quit)
 
-        self.printAction = QAction('&Print', self)
+        self.printAction = QAction('&Печать', self)
         self.printAction.setShortcut(QKeySequence.Print)
         self.printAction.triggered.connect(self.print_)
+
+        self.importAction = QAction('&Импортировать', self)
+        self.importAction.triggered.connect(self.runImportDialog)
 
         self.firstSeparator = QAction(self)
         self.firstSeparator.setSeparator(True)
@@ -108,20 +113,20 @@ class SpreadSheet(QMainWindow):
         self.secondSeparator.setSeparator(True)
 
     def setupMenuBar(self):
-        self.fileMenu = self.menuBar().addMenu('&File')
-        self.dateFormatMenu = self.fileMenu.addMenu('&Date format')
+        self.fileMenu = self.menuBar().addMenu('&Файл')
+        self.dateFormatMenu = self.fileMenu.addMenu('&Формат даты')
         self.dateFormatGroup = QActionGroup(self)
         for f in self.dateFormats:
-            action = QAction(f, self, checkable=True,
-                    triggered=self.changeDateFormat)
+            action = QAction(f, self, checkable=True, triggered=self.changeDateFormat)
             self.dateFormatGroup.addAction(action)
             self.dateFormatMenu.addAction(action)
             if f == self.currentDateFormat:
                 action.setChecked(True)
-                
+
+        self.fileMenu.addAction(self.importAction)
         self.fileMenu.addAction(self.printAction)
         self.fileMenu.addAction(self.exitAction)
-        self.cellMenu = self.menuBar().addMenu('&Cell')
+        self.cellMenu = self.menuBar().addMenu('&Клетка')
         self.cellMenu.addAction(self.cell_addAction)
         self.cellMenu.addAction(self.cell_subAction)
         self.cellMenu.addAction(self.cell_mulAction)
@@ -131,7 +136,7 @@ class SpreadSheet(QMainWindow):
         self.cellMenu.addAction(self.colorAction)
         self.cellMenu.addAction(self.fontAction)
         self.menuBar().addSeparator()
-        self.aboutMenu = self.menuBar().addMenu('&Help')
+        self.aboutMenu = self.menuBar().addMenu('&Помощь')
         self.aboutMenu.addAction(self.aboutSpreadSheet)
 
     def changeDateFormat(self):
@@ -146,27 +151,12 @@ class SpreadSheet(QMainWindow):
     def updateStatus(self, item):
         if item and item == self.table.currentItem():
             self.statusBar().showMessage(item.data(Qt.StatusTipRole), 1000)
-            self.cellLabel.setText('Cell: (%s)' % encode_pos(self.table.row(item),
-                                                                     self.table.column(item)))
-
-    def updateColor(self, item):
-        pixmap = QPixmap(16, 16)
-        color = QColor()
-        if item:
-            color = item.background().color()
-        if not color.isValid():
-            color = self.palette().base().color()
-        painter = QPainter(pixmap)
-        painter.fillRect(0, 0, 16, 16, color)
-        lighter = color.lighter()
-        painter.setPen(lighter)
-        # light frame
-        painter.drawPolyline(QPoint(0, 15), QPoint(0, 0), QPoint(15, 0))
-        painter.setPen(color.darker())
-        # dark frame
-        painter.drawPolyline(QPoint(1, 15), QPoint(15, 15), QPoint(15, 1))
-        painter.end()
-        self.colorAction.setIcon(QIcon(pixmap))
+            self.cellLabel.setText(
+                'Cell: (%s)' % encode_pos(
+                    self.table.row(item),
+                    self.table.column(item)
+                )
+            )
 
     def updateLineEdit(self, item):
         if item != self.table.currentItem():
@@ -186,120 +176,6 @@ class SpreadSheet(QMainWindow):
         else:
             item.setData(Qt.EditRole, text)
         self.table.viewport().update()
-
-    def selectColor(self):
-        item = self.table.currentItem()
-        color = item and QColor(item.background()) or self.table.palette().base().color()
-        color = QColorDialog.getColor(color, self)
-        if not color.isValid():
-            return
-        selected = self.table.selectedItems()
-        if not selected:
-            return
-        for i in selected:
-            i and i.setBackground(color)
-        self.updateColor(self.table.currentItem())
-
-    def selectFont(self):
-        selected = self.table.selectedItems()
-        if not selected:
-            return
-        font, ok = QFontDialog.getFont(self.font(), self)
-        if not ok:
-            return
-        for i in selected:
-            i and i.setFont(font)
-
-    def runInputDialog(self, title, c1Text, c2Text, opText,
-                       outText, cell1, cell2, outCell):
-        rows = []
-        cols = []
-        for r in range(self.table.rowCount()):
-            rows.append(str(r + 1))
-        for c in range(self.table.columnCount()):
-            cols.append(chr(ord('A') + c))
-        addDialog = QDialog(self)
-        addDialog.setWindowTitle(title)
-        group = QGroupBox(title, addDialog)
-        group.setMinimumSize(250, 100)
-        cell1Label = QLabel(c1Text, group)
-        cell1RowInput = QComboBox(group)
-        c1Row, c1Col = decode_pos(cell1)
-        cell1RowInput.addItems(rows)
-        cell1RowInput.setCurrentIndex(c1Row)
-        cell1ColInput = QComboBox(group)
-        cell1ColInput.addItems(cols)
-        cell1ColInput.setCurrentIndex(c1Col)
-        operatorLabel = QLabel(opText, group)
-        operatorLabel.setAlignment(Qt.AlignHCenter)
-        cell2Label = QLabel(c2Text, group)
-        cell2RowInput = QComboBox(group)
-        c2Row, c2Col = decode_pos(cell2)
-        cell2RowInput.addItems(rows)
-        cell2RowInput.setCurrentIndex(c2Row)
-        cell2ColInput = QComboBox(group)
-        cell2ColInput.addItems(cols)
-        cell2ColInput.setCurrentIndex(c2Col)
-        equalsLabel = QLabel('=', group)
-        equalsLabel.setAlignment(Qt.AlignHCenter)
-        outLabel = QLabel(outText, group)
-        outRowInput = QComboBox(group)
-        outRow, outCol = decode_pos(outCell)
-        outRowInput.addItems(rows)
-        outRowInput.setCurrentIndex(outRow)
-        outColInput = QComboBox(group)
-        outColInput.addItems(cols)
-        outColInput.setCurrentIndex(outCol)
-
-        cancelButton = QPushButton('Cancel', addDialog)
-        cancelButton.clicked.connect(addDialog.reject)
-        okButton = QPushButton('OK', addDialog)
-        okButton.setDefault(True)
-        okButton.clicked.connect(addDialog.accept)
-        buttonsLayout = QHBoxLayout()
-        buttonsLayout.addStretch(1)
-        buttonsLayout.addWidget(okButton)
-        buttonsLayout.addSpacing(10)
-        buttonsLayout.addWidget(cancelButton)
-
-        dialogLayout = QVBoxLayout(addDialog)
-        dialogLayout.addWidget(group)
-        dialogLayout.addStretch(1)
-        dialogLayout.addItem(buttonsLayout)
-
-        cell1Layout = QHBoxLayout()
-        cell1Layout.addWidget(cell1Label)
-        cell1Layout.addSpacing(10)
-        cell1Layout.addWidget(cell1ColInput)
-        cell1Layout.addSpacing(10)
-        cell1Layout.addWidget(cell1RowInput)
-
-        cell2Layout = QHBoxLayout()
-        cell2Layout.addWidget(cell2Label)
-        cell2Layout.addSpacing(10)
-        cell2Layout.addWidget(cell2ColInput)
-        cell2Layout.addSpacing(10)
-        cell2Layout.addWidget(cell2RowInput)
-        outLayout = QHBoxLayout()
-        outLayout.addWidget(outLabel)
-        outLayout.addSpacing(10)
-        outLayout.addWidget(outColInput)
-        outLayout.addSpacing(10)
-        outLayout.addWidget(outRowInput)
-        vLayout = QVBoxLayout(group)
-        vLayout.addItem(cell1Layout)
-        vLayout.addWidget(operatorLabel)
-        vLayout.addItem(cell2Layout)
-        vLayout.addWidget(equalsLabel)
-        vLayout.addStretch(1)
-        vLayout.addItem(outLayout)
-        if addDialog.exec_():
-            cell1 = cell1ColInput.currentText() + cell1RowInput.currentText()
-            cell2 = cell2ColInput.currentText() + cell2RowInput.currentText()
-            outCell = outColInput.currentText() + outRowInput.currentText()
-            return True, cell1, cell2, outCell
-
-        return False, None, None, None
 
     def actionSum(self):
         row_first = 0
@@ -325,9 +201,11 @@ class SpreadSheet(QMainWindow):
         cell1 = encode_pos(row_first, col_first)
         cell2 = encode_pos(row_last, col_last)
         out = encode_pos(row_cur, col_cur)
-        ok, cell1, cell2, out = self.runInputDialog('Sum cells', 'First cell:',
-                'Last cell:', u'\N{GREEK CAPITAL LETTER SIGMA}', 'Output to:',
-                cell1, cell2, out)
+        ok, cell1, cell2, out = self.runInputDialog(
+            'Sum cells', 'First cell:',
+            'Last cell:', u'\N{GREEK CAPITAL LETTER SIGMA}', 'Output to:',
+            cell1, cell2, out
+        )
         if ok:
             row, col = decode_pos(out)
             self.table.item(row, col).setText('sum %s %s' % (cell1, cell2))
@@ -339,8 +217,10 @@ class SpreadSheet(QMainWindow):
         current = self.table.currentItem()
         if current:
             out = encode_pos(self.table.currentRow(), self.table.currentColumn())
-        ok, cell1, cell2, out = self.runInputDialog(title, 'Cell 1', 'Cell 2',
-                op, 'Output to:', cell1, cell2, out)
+        ok, cell1, cell2, out = self.runInputDialog(
+            title, 'Cell 1', 'Cell 2',
+            op, 'Output to:', cell1, cell2, out
+        )
         if ok:
             row, col = decode_pos(out)
             self.table.item(row, col).setText('%s %s %s' % (op, cell1, cell2))
@@ -361,18 +241,35 @@ class SpreadSheet(QMainWindow):
         for i in self.table.selectedItems():
             i.setText('')
 
-    def setupContextMenu(self):
-        self.addAction(self.cell_addAction)
-        self.addAction(self.cell_subAction)
-        self.addAction(self.cell_mulAction)
-        self.addAction(self.cell_divAction)
-        self.addAction(self.cell_sumAction)
-        self.addAction(self.firstSeparator)
-        self.addAction(self.colorAction)
-        self.addAction(self.fontAction)
-        self.addAction(self.secondSeparator)
-        self.addAction(self.clearAction)
-        self.setContextMenuPolicy(Qt.ActionsContextMenu)
+    def runInputDialog(self, *args, **kwargs):
+        addDialog = InputDialog(*args, table=self.table, **kwargs)
+        if addDialog.exec_():
+            cell1 = addDialog.cell1ColInput.currentText() + addDialog.cell1RowInput.currentText()
+            cell2 = addDialog.cell2ColInput.currentText() + addDialog.cell2RowInput.currentText()
+            outCell = addDialog.outColInput.currentText() + addDialog.outRowInput.currentText()
+            return True, cell1, cell2, outCell
+        return False, None, None, None
+
+    def runImportDialog(self, *args, **kwargs) -> str:
+        filename, _ = QFileDialog.getOpenFileName(self, 'Открыть файл', '', 'Табличные файлы (*.xlsx *.csv *.json)')
+        if filename:
+            try:
+                self.read_table_file(filename)
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка", f"Произошла ошибка при чтении файла: {e}") 
+
+    def read_table_file(self, filename):
+        with open(filename) as file: 
+            if filename.endswith('.xlsx'):
+                return read_excel(file)
+            elif filename.endswith('.json'):
+                return read_json(filename)
+            elif filename.endswith('.csv'):
+                return read_csv(filename)
+            else:
+                QMessageBox.warning(self, 'Ошибка', 'Неподдерживаемый формат файла.')
+
+            QMessageBox.critical(self, 'Ошибка', f'Ошибка при чтении файла: {e}')
 
     def setupContents(self):
         titleBackground = QColor(Qt.lightGray)
@@ -438,7 +335,7 @@ class SpreadSheet(QMainWindow):
         self.table.setItem(7, 3, SpreadSheetItem('USD'))
         self.table.setItem(8, 3, SpreadSheetItem('USD'))
         self.table.setItem(9, 3, SpreadSheetItem())
-        self.table.item(9,3).setBackground(Qt.lightGray)
+        self.table.item(9, 3).setBackground(Qt.lightGray)
         # column 4
         self.table.setItem(0, 4, SpreadSheetItem('Ex. Rate'))
         self.table.item(0, 4).setBackground(titleBackground)
@@ -453,7 +350,7 @@ class SpreadSheet(QMainWindow):
         self.table.setItem(7, 4, SpreadSheetItem('7'))
         self.table.setItem(8, 4, SpreadSheetItem('7'))
         self.table.setItem(9, 4, SpreadSheetItem())
-        self.table.item(9,4).setBackground(Qt.lightGray)
+        self.table.item(9, 4).setBackground(Qt.lightGray)
         # column 5
         self.table.setItem(0, 5, SpreadSheetItem('NOK'))
         self.table.item(0, 5).setBackground(titleBackground)
@@ -468,26 +365,10 @@ class SpreadSheet(QMainWindow):
         self.table.setItem(7, 5, SpreadSheetItem('* C8 E8'))
         self.table.setItem(8, 5, SpreadSheetItem('* C9 E9'))
         self.table.setItem(9, 5, SpreadSheetItem('sum F2 F9'))
-        self.table.item(9,5).setBackground(Qt.lightGray)
+        self.table.item(9, 5).setBackground(Qt.lightGray)
 
-    def showAbout(self):
-        QMessageBox.about(self, 'About Spreadsheet', '''
-            <HTML>
-            <p>
-                Это приложения для работы с таблицами использует язык программирования Python
-               и библиотеку PyQt
-            </p>
-            <p>
-                Также приложения расчитано для импорт и экспорта данных в форматах XLSX, JSON, CSV и HTMl
-            </p>
-            <ul>
-                <li>Adding two cells.</li>
-                <li>Subtracting one cell from another.</li>
-                <li>Multiplying two cells.</li>
-                <li>Dividing one cell with another.</li>
-                <li>Summing the contents of an arbitrary number of cells.</li>
-            </HTML>
-        ''')
+    def show_about(self):
+        return show_about_window(self)
 
     def print_(self):
         printer = QPrinter(QPrinter.ScreenResolution)
@@ -505,6 +386,5 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     sheet = SpreadSheet(10, 6)
     sheet.setWindowIcon(QIcon(QPixmap(':/images/interview.png')))
-    sheet.resize(640, 420)
     sheet.show()
     sys.exit(app.exec_())
